@@ -3,7 +3,8 @@ name: Build AI Gold Trader V2
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
@@ -27,29 +28,14 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Create Android Project     
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Build APK
-        run: gradle assembleDebug
-
-      - name: Verify APK
-        run: |
-          ls -lah app/build/outputs/apk/debug
-          test -f app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AI-Gold-Trader-V2-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+      - name: Create Android Project
         run: |
           mkdir -p app/src/main/java/com/javad/aigoldtrader
-          mkdir -p app/src/main/res/values
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -61,7 +47,6 @@ jobs:
           }
 
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
                   google()
                   mavenCentral()
@@ -77,6 +62,8 @@ jobs:
               id 'com.android.application' version '8.7.3' apply false
           }
           EOF
+
+          mkdir -p app/src/main
 
           cat > app/build.gradle <<'EOF'
           plugins {
@@ -104,7 +91,7 @@ jobs:
               <uses-permission android:name="android.permission.INTERNET"/>
 
               <application
-                  android:theme="@style/AppTheme"
+                  android:theme="@android:style/Theme.Material.NoActionBar"
                   android:label="AI Gold Trader"
                   android:allowBackup="false"
                   android:supportsRtl="true">
@@ -125,24 +112,6 @@ jobs:
           </manifest>
           EOF
 
-          cat > app/src/main/res/values/styles.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-
-              <style name="AppTheme"
-                  parent="android:style/Theme.Material.NoActionBar">
-
-                  <item name="android:fontFamily">sans</item>
-                  <item name="android:windowLightStatusBar">false</item>
-                  <item name="android:statusBarColor">#0B0F16</item>
-                  <item name="android:navigationBarColor">#0B0F16</item>
-                  <item name="android:colorAccent">#D4AF37</item>
-
-              </style>
-
-          </resources>
-          EOF
-
           cat > app/src/main/java/com/javad/aigoldtrader/MainActivity.java <<'EOF'
           package com.javad.aigoldtrader;
 
@@ -150,6 +119,7 @@ jobs:
           import android.os.Bundle;
           import android.graphics.Color;
           import android.graphics.Typeface;
+          import android.graphics.drawable.GradientDrawable;
           import android.view.Gravity;
           import android.view.View;
           import android.widget.LinearLayout;
@@ -158,22 +128,22 @@ jobs:
 
           public class MainActivity extends Activity {
 
-              int gold = Color.rgb(212, 175, 55);
-              int background = Color.rgb(11, 15, 22);
+              int bg = Color.rgb(11, 15, 22);
               int card = Color.rgb(22, 28, 38);
+              int gold = Color.rgb(212, 175, 55);
               int white = Color.WHITE;
-              int gray = Color.rgb(170, 178, 190);
+              int gray = Color.rgb(175, 185, 198);
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
                   ScrollView scroll = new ScrollView(this);
-                  scroll.setBackgroundColor(background);
+                  scroll.setBackgroundColor(bg);
 
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  root.setPadding(28, 28, 28, 40);
+                  root.setPadding(28, 32, 28, 40);
                   root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
                   scroll.addView(root);
@@ -185,7 +155,7 @@ jobs:
                       true
                   );
                   title.setGravity(Gravity.CENTER);
-                  root.addView(title, params(1, 0, 0, 0, 0, 16));
+                  root.addView(title, fullParams(0, 0, 10, 0));
 
                   TextView subtitle = text(
                       "XAUUSD  •  GOLD SIGNAL ENGINE",
@@ -194,134 +164,223 @@ jobs:
                       false
                   );
                   subtitle.setGravity(Gravity.CENTER);
-                  root.addView(subtitle, params(1, 0, 0, 0, 0, 22));
+                  root.addView(subtitle, fullParams(0, 0, 22, 0));
 
-                  LinearLayout statusCard = card();
-
-                  TextView statusTitle = text(
-                      "وضعیت سیستم",
-                      16,
-                      gray,
-                      false
-                  );
-
-                  TextView status = text(
-                      "●  OFFLINE",
-                      24,
-                      Color.LTGRAY,
-                      true
-                  );
-
-                  TextView statusInfo = text(
-                      "اتصال به منبع داده هنوز فعال نشده است",
+                  LinearLayout status = createCard();
+                  addText(status, "وضعیت سیستم", 16, gray, false);
+                  addText(status, "●  OFFLINE", 24, Color.LTGRAY, true);
+                  addText(
+                      status,
+                      "اتصال به منبع داده واقعی هنوز فعال نشده است",
                       14,
                       gray,
                       false
                   );
+                  root.addView(status, fullParams(0, 0, 14, 0));
 
-                  statusCard.addView(statusTitle);
-                  statusCard.addView(status, params(1, 0, 0, 10, 0, 0));
-                  statusCard.addView(statusInfo);
+                  LinearLayout signal = createCard();
 
-                  root.addView(statusCard, params(1, 0, 0, 0, 0, 14));
+                  addText(signal, "CURRENT SIGNAL", 13, gray, true);
 
-                  LinearLayout signalCard = card();
-
-                  TextView signalLabel = text(
-                      "CURRENT SIGNAL",
-                      13,
-                      gray,
-                      true
-                  );
-
-                  TextView signal = text(
+                  TextView noTrade = addText(
+                      signal,
                       "NO TRADE",
                       32,
                       white,
                       true
                   );
-                  signal.setGravity(Gravity.CENTER);
+                  noTrade.setGravity(Gravity.CENTER);
 
-                  TextView signalNote = text(
-                      "برای جلوگیری از نمایش سیگنال ساختگی، تا زمان دریافت داده واقعی معامله‌ای پیشنهاد نمی‌شود.",
+                  TextView note = addText(
+                      signal,
+                      "تا زمان دریافت داده واقعی، هیچ سیگنال ساختگی نمایش داده نمی‌شود.",
                       14,
                       gray,
                       false
                   );
-                  signalNote.setGravity(Gravity.CENTER);
+                  note.setGravity(Gravity.CENTER);
 
-                  signalCard.addView(signalLabel);
-                  signalCard.addView(signal, params(1, 0, 0, 14, 0, 8));
-                  signalCard.addView(signalNote);
+                  root.addView(signal, fullParams(0, 0, 14, 0));
 
-                  root.addView(signalCard, params(1, 0, 0, 0, 0, 14));
+                  LinearLayout score = createCard();
+                  addText(score, "SIGNAL SCORE", 13, gray, true);
+                  addText(score, "-- / 100", 30, gold, true);
+                  root.addView(score, fullParams(0, 0, 14, 0));
 
-                  LinearLayout scoreCard = card();
+                  LinearLayout levels = createCard();
+                  addText(levels, "TRADE LEVELS", 15, gold, true);
 
-                  TextView scoreTitle = text(
-                      "SIGNAL SCORE",
-                      13,
+                  addRow(levels, "Entry", "--");
+                  addRow(levels, "Stop Loss", "--");
+                  addRow(levels, "Take Profit 1", "--");
+                  addRow(levels, "Take Profit 2", "--");
+                  addRow(levels, "Risk / Reward", "--");
+
+                  root.addView(levels, fullParams(0, 0, 14, 0));
+
+                  LinearLayout timeframes = createCard();
+                  addText(timeframes, "MULTI TIMEFRAME ANALYSIS", 15, gold, true);
+
+                  addRow(timeframes, "M15", "WAITING");
+                  addRow(timeframes, "H1", "WAITING");
+                  addRow(timeframes, "H4", "WAITING");
+
+                  root.addView(timeframes, fullParams(0, 0, 14, 0));
+
+                  LinearLayout technical = createCard();
+                  addText(technical, "TECHNICAL ENGINE", 15, gold, true);
+
+                  addRow(technical, "EMA 20 / 50 / 200", "WAITING");
+                  addRow(technical, "RSI", "WAITING");
+                  addRow(technical, "ATR", "WAITING");
+                  addRow(technical, "Market Structure", "WAITING");
+                  addRow(technical, "BOS / CHoCH", "WAITING");
+                  addRow(technical, "Liquidity", "WAITING");
+                  addRow(technical, "Support / Resistance", "WAITING");
+
+                  root.addView(technical, fullParams(0, 0, 14, 0));
+
+                  LinearLayout risk = createCard();
+                  addText(risk, "RISK MANAGEMENT", 15, gold, true);
+
+                  addRow(risk, "Account", "$100");
+                  addRow(risk, "Risk / Trade", "0.5%");
+                  addRow(risk, "Max Daily Loss", "2%");
+                  addRow(risk, "Martingale", "DISABLED");
+                  addRow(risk, "Mandatory SL", "ON");
+
+                  root.addView(risk, fullParams(0, 0, 20, 0));
+
+                  TextView footer = text(
+                      "AI GOLD TRADER V2\nManual MT5 Execution • Auto Trading Disabled",
+                      12,
                       gray,
-                      true
+                      false
+                  );
+                  footer.setGravity(Gravity.CENTER);
+                  root.addView(footer, fullParams(0, 0, 10, 0));
+
+                  setContentView(scroll);
+              }
+
+              LinearLayout createCard() {
+                  LinearLayout box = new LinearLayout(this);
+                  box.setOrientation(LinearLayout.VERTICAL);
+                  box.setPadding(22, 20, 22, 20);
+                  box.setBackground(roundBackground(card, 18));
+                  return box;
+              }
+
+              TextView addText(
+                  LinearLayout parent,
+                  String value,
+                  float size,
+                  int color,
+                  boolean bold
+              ) {
+                  TextView tv = text(value, size, color, bold);
+                  parent.addView(tv, fullParams(0, 0, 8, 0));
+                  return tv;
+              }
+
+              void addRow(
+                  LinearLayout parent,
+                  String left,
+                  String right
+              ) {
+                  LinearLayout row = new LinearLayout(this);
+                  row.setOrientation(LinearLayout.HORIZONTAL);
+                  row.setGravity(Gravity.CENTER_VERTICAL);
+                  row.setPadding(0, 8, 0, 8);
+
+                  TextView a = text(left, 14, gray, false);
+                  TextView b = text(right, 14, white, true);
+
+                  row.addView(
+                      a,
+                      new LinearLayout.LayoutParams(
+                          0,
+                          LinearLayout.LayoutParams.WRAP_CONTENT,
+                          1
+                      )
                   );
 
-                  TextView score = text(
-                      "-- / 100",
-                      30,
-                      gold,
-                      true
+                  row.addView(
+                      b,
+                      new LinearLayout.LayoutParams(
+                          0,
+                          LinearLayout.LayoutParams.WRAP_CONTENT,
+                          1
+                      )
                   );
 
-                  scoreCard.addView(scoreTitle);
-                  scoreCard.addView(score, params(1, 0, 0, 8, 0, 0));
-
-                  root.addView(scoreCard, params(1, 0, 0, 0, 0, 14));
-
-                  LinearLayout tradeCard = card();
-
-                  TextView tradeTitle = text(
-                      "TRADE LEVELS",
-                      15,
-                      gold,
-                      true
+                  parent.addView(
+                      row,
+                      new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      )
                   );
+              }
 
-                  tradeCard.addView(tradeTitle);
+              TextView text(
+                  String value,
+                  float size,
+                  int color,
+                  boolean bold
+              ) {
+                  TextView tv = new TextView(this);
+                  tv.setText(value);
+                  tv.setTextSize(size);
+                  tv.setTextColor(color);
+                  tv.setGravity(Gravity.CENTER_VERTICAL);
 
-                  addRow(tradeCard, "Entry", "--");
-                  addRow(tradeCard, "Stop Loss", "--");
-                  addRow(tradeCard, "Take Profit 1", "--");
-                  addRow(tradeCard, "Take Profit 2", "--");
-                  addRow(tradeCard, "Risk / Reward", "--");
+                  if (bold) {
+                      tv.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  }
 
-                  root.addView(tradeCard, params(1, 0, 0, 0, 0, 14));
+                  return tv;
+              }
 
-                  LinearLayout timeframeCard = card();
+              LinearLayout.LayoutParams fullParams(
+                  int top,
+                  int right,
+                  int bottom,
+                  int left
+              ) {
+                  LinearLayout.LayoutParams p =
+                      new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      );
 
-                  TextView tfTitle = text(
-                      "MULTI TIMEFRAME ANALYSIS",
-                      15,
-                      gold,
-                      true
-                  );
+                  p.setMargins(left, top, right, bottom);
+                  return p;
+              }
 
-                  timeframeCard.addView(tfTitle);
+              GradientDrawable roundBackground(
+                  int color,
+                  float radius
+              ) {
+                  GradientDrawable g = new GradientDrawable();
+                  g.setColor(color);
+                  g.setCornerRadius(radius);
+                  return g;
+              }
+          }
+          EOF
 
-                  addRow(timeframeCard, "M15", "WAITING");
-                  addRow(timeframeCard, "H1", "WAITING");
-                  addRow(timeframeCard, "H4", "WAITING");
+      - name: Build APK
+        run: gradle assembleDebug
 
-                  root.addView(timeframeCard, params(1, 0, 0, 0, 0, 14));
+      - name: Verify APK
+        run: |
+          ls -lah app/build/outputs/apk/debug
+          test -f app/build/outputs/apk/debug/app-debug.apk
 
-                  LinearLayout indicatorsCard = card();
-
-                  TextView indTitle = text(
-                      "TECHNICAL ENGINE",
-                      15,
-                      gold,
-                      true
-                  );
-
-                  indicatorsCard.addView(indTitle);
-
-                  addRow(indicatorsCard, "EMA 20 / 50 / 200
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Gold-Trader-V2-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
