@@ -1,4 +1,4 @@
-name: Build AI Gold Trader APK
+name: Build AI Gold Trader V2
 
 on:
   workflow_dispatch:
@@ -22,12 +22,12 @@ jobs:
       - name: Setup Android
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK
+      - name: Install Android SDK
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Create project
+      - name: Create Android Project
         run: |
           mkdir -p app/src/main/java/com/javad/aigoldtrader
           mkdir -p app/src/main/res/values
@@ -72,8 +72,8 @@ jobs:
                   applicationId "com.javad.aigoldtrader"
                   minSdk 24
                   targetSdk 35
-                  versionCode 1
-                  versionName "1.0"
+                  versionCode 2
+                  versionName "2.0"
               }
           }
           EOF
@@ -87,7 +87,8 @@ jobs:
               <application
                   android:theme="@style/AppTheme"
                   android:label="AI Gold Trader"
-                  android:allowBackup="false">
+                  android:allowBackup="false"
+                  android:supportsRtl="true">
 
                   <activity
                       android:name=".MainActivity"
@@ -99,19 +100,27 @@ jobs:
                       </intent-filter>
 
                   </activity>
+
               </application>
+
           </manifest>
           EOF
 
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
+
               <style name="AppTheme"
                   parent="android:style/Theme.Material.NoActionBar">
+
                   <item name="android:fontFamily">sans</item>
-                  <item name="android:statusBarColor">#10131A</item>
-                  <item name="android:navigationBarColor">#10131A</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:statusBarColor">#0B0F16</item>
+                  <item name="android:navigationBarColor">#0B0F16</item>
+                  <item name="android:colorAccent">#D4AF37</item>
+
               </style>
+
           </resources>
           EOF
 
@@ -121,59 +130,179 @@ jobs:
           import android.app.Activity;
           import android.os.Bundle;
           import android.graphics.Color;
+          import android.graphics.Typeface;
           import android.view.Gravity;
+          import android.view.View;
           import android.widget.LinearLayout;
+          import android.widget.ScrollView;
           import android.widget.TextView;
 
           public class MainActivity extends Activity {
+
+              int gold = Color.rgb(212, 175, 55);
+              int background = Color.rgb(11, 15, 22);
+              int card = Color.rgb(22, 28, 38);
+              int white = Color.WHITE;
+              int gray = Color.rgb(170, 178, 190);
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
+                  ScrollView scroll = new ScrollView(this);
+                  scroll.setBackgroundColor(background);
+
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  root.setGravity(Gravity.CENTER);
-                  root.setPadding(40,40,40,40);
-                  root.setBackgroundColor(Color.rgb(16,19,26));
+                  root.setPadding(28, 28, 28, 40);
+                  root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-                  TextView title = new TextView(this);
-                  title.setText("AI GOLD TRADER");
-                  title.setTextColor(Color.WHITE);
-                  title.setTextSize(28);
-                  title.setGravity(Gravity.CENTER);
+                  scroll.addView(root);
 
-                  TextView info = new TextView(this);
-                  info.setText(
-                      "XAUUSD\\n\\n" +
-                      "سیستم سیگنال طلا\\n\\n" +
-                      "BUY  •  SELL  •  NO TRADE\\n\\n" +
-                      "Entry  •  SL  •  TP  •  Score\\n\\n" +
-                      "M15  •  H1  •  H4"
+                  TextView title = text(
+                      "AI GOLD TRADER",
+                      28,
+                      gold,
+                      true
                   );
-                  info.setTextColor(Color.LTGRAY);
-                  info.setTextSize(18);
-                  info.setGravity(Gravity.CENTER);
+                  title.setGravity(Gravity.CENTER);
+                  root.addView(title, params(1, 0, 0, 0, 0, 16));
 
-                  root.addView(title);
-                  root.addView(info);
+                  TextView subtitle = text(
+                      "XAUUSD  •  GOLD SIGNAL ENGINE",
+                      14,
+                      gray,
+                      false
+                  );
+                  subtitle.setGravity(Gravity.CENTER);
+                  root.addView(subtitle, params(1, 0, 0, 0, 0, 22));
 
-                  setContentView(root);
-              }
-          }
-          EOF
-          
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
+                  LinearLayout statusCard = card();
 
-      - name: Build APK
-        run: gradle assembleDebug
+                  TextView statusTitle = text(
+                      "وضعیت سیستم",
+                      16,
+                      gray,
+                      false
+                  );
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AI-Gold-Trader-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-      
+                  TextView status = text(
+                      "●  OFFLINE",
+                      24,
+                      Color.LTGRAY,
+                      true
+                  );
+
+                  TextView statusInfo = text(
+                      "اتصال به منبع داده هنوز فعال نشده است",
+                      14,
+                      gray,
+                      false
+                  );
+
+                  statusCard.addView(statusTitle);
+                  statusCard.addView(status, params(1, 0, 0, 10, 0, 0));
+                  statusCard.addView(statusInfo);
+
+                  root.addView(statusCard, params(1, 0, 0, 0, 0, 14));
+
+                  LinearLayout signalCard = card();
+
+                  TextView signalLabel = text(
+                      "CURRENT SIGNAL",
+                      13,
+                      gray,
+                      true
+                  );
+
+                  TextView signal = text(
+                      "NO TRADE",
+                      32,
+                      white,
+                      true
+                  );
+                  signal.setGravity(Gravity.CENTER);
+
+                  TextView signalNote = text(
+                      "برای جلوگیری از نمایش سیگنال ساختگی، تا زمان دریافت داده واقعی معامله‌ای پیشنهاد نمی‌شود.",
+                      14,
+                      gray,
+                      false
+                  );
+                  signalNote.setGravity(Gravity.CENTER);
+
+                  signalCard.addView(signalLabel);
+                  signalCard.addView(signal, params(1, 0, 0, 14, 0, 8));
+                  signalCard.addView(signalNote);
+
+                  root.addView(signalCard, params(1, 0, 0, 0, 0, 14));
+
+                  LinearLayout scoreCard = card();
+
+                  TextView scoreTitle = text(
+                      "SIGNAL SCORE",
+                      13,
+                      gray,
+                      true
+                  );
+
+                  TextView score = text(
+                      "-- / 100",
+                      30,
+                      gold,
+                      true
+                  );
+
+                  scoreCard.addView(scoreTitle);
+                  scoreCard.addView(score, params(1, 0, 0, 8, 0, 0));
+
+                  root.addView(scoreCard, params(1, 0, 0, 0, 0, 14));
+
+                  LinearLayout tradeCard = card();
+
+                  TextView tradeTitle = text(
+                      "TRADE LEVELS",
+                      15,
+                      gold,
+                      true
+                  );
+
+                  tradeCard.addView(tradeTitle);
+
+                  addRow(tradeCard, "Entry", "--");
+                  addRow(tradeCard, "Stop Loss", "--");
+                  addRow(tradeCard, "Take Profit 1", "--");
+                  addRow(tradeCard, "Take Profit 2", "--");
+                  addRow(tradeCard, "Risk / Reward", "--");
+
+                  root.addView(tradeCard, params(1, 0, 0, 0, 0, 14));
+
+                  LinearLayout timeframeCard = card();
+
+                  TextView tfTitle = text(
+                      "MULTI TIMEFRAME ANALYSIS",
+                      15,
+                      gold,
+                      true
+                  );
+
+                  timeframeCard.addView(tfTitle);
+
+                  addRow(timeframeCard, "M15", "WAITING");
+                  addRow(timeframeCard, "H1", "WAITING");
+                  addRow(timeframeCard, "H4", "WAITING");
+
+                  root.addView(timeframeCard, params(1, 0, 0, 0, 0, 14));
+
+                  LinearLayout indicatorsCard = card();
+
+                  TextView indTitle = text(
+                      "TECHNICAL ENGINE",
+                      15,
+                      gold,
+                      true
+                  );
+
+                  indicatorsCard.addView(indTitle);
+
+                  addRow(indicatorsCard, "EMA 20 / 50 / 200
